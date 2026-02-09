@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "auto-card-news-v2"
+version = "0.1.0"
+description = "Generate Threads card-news carousels from RSS feeds."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "auto-card-news-v2" }]
+dependencies = [
+    "certifi>=2024.7.4",
+    "cloudinary>=1.36.0",
+    "feedparser>=6.0.11",
+    "Pillow>=10.4.0",
+    "playwright>=1.40.0",
+    "Jinja2>=3.1.0",
+]
+
+[project.scripts]
+card-news = "auto_card_news_v2.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/auto_card_news_v2"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

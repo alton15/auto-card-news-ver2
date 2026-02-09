@@ -1,0 +1,46 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "tool == \"Bash\" && tool_input.command matches \"git push\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[Hook] git push 전 python -m pytest tests/ 통과 여부를 확인하세요.' >&2"
+          }
+        ]
+      },
+      {
+        "matcher": "tool == \"Write\" && tool_input.file_path matches \"\\.md$\" && !(tool_input.file_path matches \"(CLAUDE|README|AGENT_HANDOFF)\\.md$\")",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[Hook] 불필요한 .md 파일 생성을 피하세요. CLAUDE.md, README.md, AGENT_HANDOFF.md만 허용됩니다.' >&2"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\.py$\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "grep -rn 'print(' \"$TOOL_INPUT_file_path\" 2>/dev/null | grep -v 'cli.py' | grep -v '#.*print' | head -5 | while read line; do echo \"[Hook] print() 발견 - logging 모듈 사용을 고려하세요: $line\" >&2; done; true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "MODIFIED=$(git diff --name-only 2>/dev/null | grep '\\.py$'); if [ -n \"$MODIFIED\" ]; then for f in $MODIFIED; do grep -n 'print(' \"$f\" 2>/dev/null | grep -v 'cli.py' | head -3 | while read line; do echo \"[Hook] $f 에 print() 남아있음: $line\" >&2; done; done; fi; true"
+          }
+        ]
+      }
+    ]
+  }
+}

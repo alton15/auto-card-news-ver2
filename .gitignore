@@ -1,0 +1,23 @@
+# Environment
+.env
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Testing
+.pytest_cache/
+
+# Output
+output/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+everything-claude-code/

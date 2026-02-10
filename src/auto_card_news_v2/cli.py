@@ -32,6 +32,11 @@ def _build_parser() -> argparse.ArgumentParser:
     pub = sub.add_parser("publish", help="Publish an existing output directory to Threads.")
     pub.add_argument("output_path", type=str, help="Path to a card-news output directory.")
 
+    run = sub.add_parser("run", help="Start the scheduler for periodic card news generation.")
+    run.add_argument("--interval", type=int, default=None, help="Interval in minutes between runs (default: from NEWS_SCHEDULE_INTERVAL or 60).")
+    run.add_argument("--no-publish", action="store_true", help="Disable automatic publishing to Threads.")
+    run.add_argument("--limit", type=int, default=None, help="Max number of items per run.")
+
     sched = sub.add_parser("schedule", help="Manage cron-based auto-generation schedule.")
     sched_sub = sched.add_subparsers(dest="schedule_action")
 
@@ -60,6 +65,8 @@ def main(argv: list[str] | None = None) -> None:
         _cmd_auth(args)
     elif args.command == "publish":
         _cmd_publish(args)
+    elif args.command == "run":
+        _cmd_run(args)
     elif args.command == "schedule":
         _cmd_schedule(args)
 
@@ -97,6 +104,22 @@ def _cmd_generate(args: argparse.Namespace) -> None:
 
     if args.auto_publish and posts:
         _publish_posts(posts, settings)
+
+
+def _cmd_run(args: argparse.Namespace) -> None:
+    from auto_card_news_v2.config import load_settings as _load
+    from auto_card_news_v2.runner import start
+
+    settings = _load()
+    interval = args.interval if args.interval is not None else settings.schedule_interval_minutes
+    auto_publish = not args.no_publish and settings.auto_publish
+
+    start(
+        interval_minutes=interval,
+        auto_publish=auto_publish,
+        limit=args.limit,
+        timezone=settings.timezone,
+    )
 
 
 def _cmd_auth(args: argparse.Namespace) -> None:

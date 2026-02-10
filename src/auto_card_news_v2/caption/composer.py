@@ -30,28 +30,27 @@ def compose_caption(story: Story, settings: Settings) -> str:
     if len(caption) <= _THREADS_MAX_CHARS:
         return caption
 
-    # 1. Drop hashtags
-    caption = _assemble(story.hook_title, bullets, cta, question, "")
+    # 1. Drop engagement question
+    caption = _assemble(story.hook_title, bullets, cta, "", hashtags)
     if len(caption) <= _THREADS_MAX_CHARS:
         return caption
 
-    # 2. Drop engagement question
-    caption = _assemble(story.hook_title, bullets, cta, "", "")
+    # 2. Drop CTA
+    caption = _assemble(story.hook_title, bullets, "", "", hashtags)
     if len(caption) <= _THREADS_MAX_CHARS:
         return caption
 
-    # 3. Drop CTA
-    caption = _assemble(story.hook_title, bullets, "", "", "")
-    if len(caption) <= _THREADS_MAX_CHARS:
-        return caption
-
-    # 4. Reduce bullets one at a time
+    # 3. Reduce bullets one at a time
     for n in range(len(bullets) - 1, -1, -1):
-        caption = _assemble(story.hook_title, bullets[:n], "", "", "")
+        caption = _assemble(story.hook_title, bullets[:n], "", "", hashtags)
         if len(caption) <= _THREADS_MAX_CHARS:
             return caption
 
-    # 5. Last resort: hard truncate
+    # 4. Drop hashtags as last resort
+    caption = _assemble(story.hook_title, (), "", "", hashtags)
+    if len(caption) <= _THREADS_MAX_CHARS:
+        return caption
+
     caption = _assemble(story.hook_title, (), "", "", "")
     if len(caption) > _THREADS_MAX_CHARS:
         caption = caption[:_THREADS_MAX_CHARS]

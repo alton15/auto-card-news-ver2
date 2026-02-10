@@ -1,0 +1,23 @@
+services:
+  card-news:
+    build: .
+    container_name: card-news
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - card-news-data:/home/cardnews/.card-news
+      - ./output:/app/output
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+
+volumes:
+  card-news-data:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from dataclasses import replace
 
@@ -32,7 +33,8 @@ def run_pipeline(settings: Settings) -> list[ThreadsPost]:
     posts: list[ThreadsPost] = []
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch()
+        executable = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH")
+        browser = pw.chromium.launch(executable_path=executable) if executable else pw.chromium.launch()
 
         for item in items:
             try:

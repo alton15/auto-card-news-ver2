@@ -57,13 +57,14 @@ def publish_post(
     try:
         uploads = upload_images(post.image_paths, settings)
 
-        # 3. Create image containers
+        # 3. Create image containers and wait for each
         user_id = settings.threads_user_id
         children_ids: list[str] = []
         for upload in uploads:
             container_id = create_image_container(
                 user_id, upload.public_url, access_token
             )
+            wait_for_container(container_id, access_token)
             children_ids.append(container_id)
 
         # 4. Create carousel + wait

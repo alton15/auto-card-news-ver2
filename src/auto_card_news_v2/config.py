@@ -6,6 +6,10 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -23,6 +27,9 @@ class Settings:
     cloudinary_cloud_name: str = ""
     cloudinary_api_key: str = ""
     cloudinary_api_secret: str = ""
+    schedule_interval_minutes: int = 60
+    auto_publish: bool = True
+    timezone: str = "Asia/Seoul"
 
 
 def load_settings(
@@ -50,6 +57,13 @@ def load_settings(
     cloudinary_api_key = os.getenv("CLOUDINARY_API_KEY", "")
     cloudinary_api_secret = os.getenv("CLOUDINARY_API_SECRET", "")
 
+    schedule_interval_minutes = int(os.getenv("NEWS_SCHEDULE_INTERVAL", "60"))
+
+    auto_publish_str = os.getenv("NEWS_AUTO_PUBLISH", "true").lower()
+    auto_publish = auto_publish_str not in ("false", "0", "no")
+
+    tz = os.getenv("NEWS_TIMEZONE", "Asia/Seoul")
+
     return Settings(
         rss_feeds=feeds,
         output_dir=output_dir,
@@ -63,4 +77,7 @@ def load_settings(
         cloudinary_cloud_name=cloudinary_cloud_name,
         cloudinary_api_key=cloudinary_api_key,
         cloudinary_api_secret=cloudinary_api_secret,
+        schedule_interval_minutes=schedule_interval_minutes,
+        auto_publish=auto_publish,
+        timezone=tz,
     )

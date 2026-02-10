@@ -94,7 +94,8 @@ src/auto_card_news_v2/
   config.py            # Settings (env vars → frozen dataclass)
   cli.py               # argparse CLI entrypoint
   pipeline.py          # run_pipeline() 전체 오케스트레이션
-  scheduler.py         # cron 기반 스케줄러
+  runner.py            # APScheduler 기반 주기 실행 (Docker용)
+  scheduler.py         # cron 기반 스케줄러 (로컬용)
   feed/
     fetcher.py         # RSS XML 다운로드
     parser.py          # feedparser → FeedItem 변환
@@ -123,10 +124,14 @@ src/auto_card_news_v2/
     image_host.py      # Cloudinary 업로드/삭제
     client.py          # Threads Graph API 호출
     publisher.py       # 전체 발행 플로우
-tests/                 # pytest (82개 테스트)
+Dockerfile             # 멀티스테이지 Docker 빌드
+docker-compose.yml     # Docker Compose 서비스 정의
+tests/                 # pytest (88개 테스트)
 ```
 
 ## Setup
+
+### 로컬 실행
 
 ```bash
 python -m venv .venv
@@ -135,7 +140,20 @@ pip install -e .
 playwright install chromium
 ```
 
+### Docker 실행
+
+```bash
+cp .env.example .env   # 환경변수 설정
+# .env 파일에 필요한 값 입력
+
+docker compose build
+docker compose up -d
+docker compose logs -f
+```
+
 ## Usage
+
+### CLI 명령어
 
 ```bash
 # 카드 뉴스 생성
@@ -153,10 +171,32 @@ card-news auth --token "YOUR_TOKEN"
 # 기존 output 수동 발행
 card-news publish output/20260130_080000_subway-suspended/
 
-# 스케줄 관리
+# 스케줄러 실행 (Docker 컨테이너용)
+card-news run --interval 60 --limit 1
+card-news run --no-publish              # 발행 없이 생성만
+card-news run --interval 30 --limit 3   # 30분 간격, 3개씩
+
+# cron 스케줄 관리 (로컬용)
 card-news schedule install --times "12:00,15:00,17:00" --limit 1
 card-news schedule status
 card-news schedule uninstall
+```
+
+### Docker Compose
+
+```bash
+# 빌드 + 백그라운드 실행
+docker compose up -d
+
+# 로그 확인
+docker compose logs -f
+
+# dry-run 테스트
+docker compose run --rm card-news generate --dry-run
+
+# 중지 / 재시작 (토큰·이력 유지)
+docker compose down
+docker compose up -d
 ```
 
 ## Environment Variables
@@ -170,10 +210,14 @@ card-news schedule uninstall
 | `NEWS_NUM_CARDS` | `6` | Cards per carousel |
 | `NEWS_BRAND_NAME` | `Card News` | Brand name on CTA card |
 | `NEWS_BRAND_HANDLE` | `@cardnews` | Handle on CTA card |
+| `NEWS_SCHEDULE_INTERVAL` | `60` | Scheduler interval (minutes) |
+| `NEWS_AUTO_PUBLISH` | `true` | Auto-publish to Threads |
+| `NEWS_TIMEZONE` | `Asia/Seoul` | Scheduler timezone |
 | `THREADS_USER_ID` | | Threads user ID (발행 시 필요) |
 | `CLOUDINARY_CLOUD_NAME` | | Cloudinary cloud name |
 | `CLOUDINARY_API_KEY` | | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | | Cloudinary API secret |
+| `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` | | Custom Chromium path (ARM64 등) |
 
 ## Output
 
@@ -196,12 +240,26 @@ output/20260130_080000_subway-suspended/
 - **Shared Playwright** — 스크래핑과 렌더링이 동일 브라우저 인스턴스 공유
 - **PII removal** — placeholder 대신 빈 문자열 대체
 - **Persistent dedup** — `~/.card-news/publish_history.json`으로 실행 간 중복 방지
-- **Cron scheduler** — 외부 의존성 없이 시스템 crontab 활용
+- **Dual scheduler** — 로컬 crontab 또는 Docker 내 APScheduler 선택 가능
+- **Docker ready** — 멀티스테이지 빌드, 비루트 유저, ARM64 호환
+
+## Docker Architecture
+
+```
+docker-compose.yml
+├── card-news (container)
+│   ├── APScheduler (BlockingScheduler)
+│   │   └── run_job() → pipeline + publish (interval마다 반복)
+│   ├── Playwright Chromium (/opt/playwright)
+│   └── fonts-noto-cjk (한국어 폰트)
+├── card-news-data (volume)        # ~/.card-news/ (토큰 + 발행 이력)
+└── ./output (bind mount)          # 생성된 카드뉴스 PNG
+```
 
 ## Tests
 
 ```bash
-python -m pytest tests/        # 전체 실행 (82개)
+python -m pytest tests/        # 전체 실행 (88개)
 python -m pytest tests/ -v     # 상세 출력
 python -m pytest tests/ -k "test_history"  # 특정 테스트
 ```

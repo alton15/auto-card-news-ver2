@@ -9,6 +9,7 @@ services:
     volumes:
       - card-news-data:/home/cardnews/.card-news
       - ./output:/app/output
+      - ~/.card-news:/seed:ro
     logging:
       driver: json-file
       options:

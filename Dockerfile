@@ -52,6 +52,9 @@ RUN pip install --no-cache-dir /wheels/*.whl \
 RUN mkdir -p /app/output /home/cardnews/.card-news \
     && chown cardnews:cardnews /app/output /home/cardnews/.card-news
 
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 USER cardnews
 
 ENV PYTHONUNBUFFERED=1
@@ -60,5 +63,5 @@ ENV NEWS_OUTPUT_DIR=/app/output
 HEALTHCHECK --interval=60s --timeout=10s --retries=3 \
     CMD python -c "import auto_card_news_v2"
 
-ENTRYPOINT ["card-news"]
+ENTRYPOINT ["/entrypoint.sh", "card-news"]
 CMD ["run", "--interval", "60", "--limit", "1"]

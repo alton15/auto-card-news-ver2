@@ -56,7 +56,6 @@ def load_settings(
     cloudinary_cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME", "")
     cloudinary_api_key = os.getenv("CLOUDINARY_API_KEY", "")
     cloudinary_api_secret = os.getenv("CLOUDINARY_API_SECRET", "")
-
     schedule_interval_minutes = int(os.getenv("NEWS_SCHEDULE_INTERVAL", "60"))
 
     auto_publish_str = os.getenv("NEWS_AUTO_PUBLISH", "true").lower()

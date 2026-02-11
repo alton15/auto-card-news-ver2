@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 from dataclasses import replace
+from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
@@ -17,6 +19,10 @@ from auto_card_news_v2.models import FeedItem, ThreadsPost
 from auto_card_news_v2.output import package_output
 from auto_card_news_v2.render.carousel import render_carousel_with_browser
 from auto_card_news_v2.story import build_story, sanitize_story
+
+logger = logging.getLogger(__name__)
+
+_MAX_OUTPUT_DIRS = 5
 
 
 def run_pipeline(settings: Settings) -> list[ThreadsPost]:
@@ -51,6 +57,7 @@ def run_pipeline(settings: Settings) -> list[ThreadsPost]:
 
         browser.close()
 
+    _cleanup_old_outputs(settings.output_dir)
     return posts
 
 
@@ -73,7 +80,9 @@ def _process_item(item: FeedItem, settings: Settings, browser) -> ThreadsPost:
     story = sanitize_story(story, enabled=settings.safety_enabled)
 
     temp_dir = settings.output_dir / "_temp_render"
-    image_paths = render_carousel_with_browser(story, temp_dir, settings, browser)
+    image_paths = render_carousel_with_browser(
+        story, temp_dir, settings, browser,
+    )
     caption = compose_caption(story, settings)
     post = package_output(story, image_paths, caption, settings.output_dir)
 
@@ -82,6 +91,22 @@ def _process_item(item: FeedItem, settings: Settings, browser) -> ThreadsPost:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
     return post
+
+
+def _cleanup_old_outputs(output_dir: Path) -> None:
+    """Remove oldest output directories when count exceeds _MAX_OUTPUT_DIRS."""
+    if not output_dir.exists():
+        return
+
+    dirs = sorted(
+        (d for d in output_dir.iterdir() if d.is_dir() and not d.name.startswith("_")),
+        key=lambda d: d.name,
+    )
+
+    to_remove = dirs[:-_MAX_OUTPUT_DIRS] if len(dirs) > _MAX_OUTPUT_DIRS else []
+    for d in to_remove:
+        shutil.rmtree(d, ignore_errors=True)
+        logger.info("Cleaned up old output: %s", d.name)
 
 
 def _print_dry_run(items: list[FeedItem]) -> None:

@@ -10,8 +10,8 @@ __pycache__/
 # Testing
 .pytest_cache/
 
-# Output
-output/
+# Output (generated card news, not src package)
+/output/
 
 # IDE
 .idea/

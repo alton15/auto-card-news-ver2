@@ -2,7 +2,7 @@ name: Card News Generate
 
 on:
   schedule:
-    - cron: '0 * * * *'  # 매시 정각
+    - cron: '0 */2 * * *'  # 2시간마다
   workflow_dispatch:       # 수동 실행
 
 permissions:

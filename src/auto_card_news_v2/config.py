@@ -30,6 +30,9 @@ class Settings:
     schedule_interval_minutes: int = 60
     auto_publish: bool = True
     timezone: str = "Asia/Seoul"
+    priority_domains: tuple[str, ...] = ()
+    priority_ratio: int = 8
+    daily_total: int = 12
 
 
 def load_settings(
@@ -63,6 +66,13 @@ def load_settings(
 
     tz = os.getenv("NEWS_TIMEZONE", "Asia/Seoul")
 
+    raw_priority = os.getenv("NEWS_PRIORITY_DOMAINS", "")
+    priority_domains = tuple(
+        d.strip() for d in raw_priority.split(",") if d.strip()
+    )
+    priority_ratio = int(os.getenv("NEWS_PRIORITY_RATIO", "8"))
+    daily_total = int(os.getenv("NEWS_DAILY_TOTAL", "12"))
+
     return Settings(
         rss_feeds=feeds,
         output_dir=output_dir,
@@ -79,4 +89,7 @@ def load_settings(
         schedule_interval_minutes=schedule_interval_minutes,
         auto_publish=auto_publish,
         timezone=tz,
+        priority_domains=priority_domains,
+        priority_ratio=priority_ratio,
+        daily_total=daily_total,
     )

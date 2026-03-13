@@ -12,7 +12,13 @@ from playwright.sync_api import sync_playwright
 
 from auto_card_news_v2.caption import compose_caption
 from auto_card_news_v2.config import Settings
-from auto_card_news_v2.feed import deduplicate, fetch_feed, filter_already_published, parse_feed
+from auto_card_news_v2.feed import (
+    deduplicate,
+    fetch_feed,
+    filter_already_published,
+    parse_feed,
+    prioritize_items,
+)
 from auto_card_news_v2.feed.history import save_url
 from auto_card_news_v2.feed.scraper import scrape_article
 from auto_card_news_v2.models import FeedItem, ThreadsPost
@@ -30,6 +36,13 @@ def run_pipeline(settings: Settings) -> list[ThreadsPost]:
     items = _fetch_all_feeds(settings)
     items = deduplicate(items)
     items = filter_already_published(items)
+    items = prioritize_items(
+        items,
+        priority_domains=settings.priority_domains,
+        priority_ratio=settings.priority_ratio,
+        daily_total=settings.daily_total,
+        tz_name=settings.timezone,
+    )
     items = items[: settings.max_items]
 
     if settings.dry_run:

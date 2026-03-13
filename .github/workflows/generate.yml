@@ -38,6 +38,9 @@ jobs:
       - name: Generate and publish
         env:
           NEWS_RSS_FEEDS: "https://en.yna.co.kr/RSS/news.xml,http://rss.joinsmsn.com/news/joins_joongangdaily_news.xml,https://www.soompi.com/feed,https://www.koreaboo.com/feed/"
+          NEWS_PRIORITY_DOMAINS: "soompi.com,koreaboo.com"
+          NEWS_PRIORITY_RATIO: "8"
+          NEWS_DAILY_TOTAL: "12"
           NEWS_BRAND_NAME: ${{ secrets.NEWS_BRAND_NAME }}
           NEWS_BRAND_HANDLE: ${{ secrets.NEWS_BRAND_HANDLE }}
           THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}

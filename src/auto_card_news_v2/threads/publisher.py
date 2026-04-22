@@ -16,7 +16,10 @@ from auto_card_news_v2.threads.client import (
     wait_for_container,
 )
 from auto_card_news_v2.threads.image_host import cleanup_images, upload_images
-from auto_card_news_v2.threads.token_store import load_token, refresh_if_needed
+from auto_card_news_v2.threads.token_store import (
+    load_token_allow_expired,
+    refresh_if_needed,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,13 +47,19 @@ def publish_post(
     """
     _validate_config(settings)
 
-    # 1. Token
-    access_token = load_token(token_path=token_path)
+    # 1. Token — attempt refresh if expired before giving up
+    access_token, expired = load_token_allow_expired(token_path=token_path)
     if not access_token:
         raise PublishConfigError(
             "No Threads access token found. Run 'card-news auth' first."
         )
-    access_token = refresh_if_needed(access_token, token_path=token_path)
+    if expired:
+        logger.info("Token expired, attempting refresh before publish")
+        access_token = refresh_if_needed(
+            access_token, token_path=token_path, force=True,
+        )
+    else:
+        access_token = refresh_if_needed(access_token, token_path=token_path)
 
     # 2. Upload images
     uploads: tuple[ImageUpload, ...] = ()

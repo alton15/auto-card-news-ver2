@@ -32,30 +32,51 @@ def _token_path() -> Path:
 
 def load_token(*, token_path: Path | None = None) -> str | None:
     """Load a valid access token from disk, or return None."""
+    token, expired = _load_token_with_status(token_path=token_path)
+    if expired:
+        return None
+    return token
+
+
+def load_token_allow_expired(*, token_path: Path | None = None) -> tuple[str | None, bool]:
+    """Load access token from disk, returning (token, is_expired).
+
+    Unlike ``load_token``, this returns expired tokens so callers can
+    attempt a refresh before giving up.
+    """
+    return _load_token_with_status(token_path=token_path)
+
+
+def _load_token_with_status(
+    *, token_path: Path | None = None,
+) -> tuple[str | None, bool]:
+    """Return (access_token_or_none, is_expired)."""
     path = token_path or _token_path()
     if not path.exists():
-        return None
+        return None, False
 
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         logger.warning("Corrupted token file, ignoring")
-        return None
+        return None, False
+
+    token = data.get("access_token") or None
 
     expires_at = data.get("expires_at", "")
     if not expires_at:
-        return data.get("access_token") or None
+        return token, False
 
     try:
         exp = datetime.fromisoformat(expires_at)
     except ValueError:
-        return data.get("access_token") or None
+        return token, False
 
     if datetime.now(timezone.utc) >= exp:
         logger.info("Token has expired")
-        return None
+        return token, True
 
-    return data.get("access_token") or None
+    return token, False
 
 
 def save_token(
@@ -91,9 +112,21 @@ def refresh_if_needed(
     *,
     token_path: Path | None = None,
     threshold_days: int = _REFRESH_THRESHOLD_DAYS,
+    force: bool = False,
 ) -> str:
-    """Refresh the token if it expires within *threshold_days*. Returns the (possibly new) token."""
+    """Refresh the token if it expires within *threshold_days*.
+
+    When *force* is ``True``, skip freshness check and refresh immediately
+    (used when the token is already expired).
+
+    Returns the (possibly new) token.
+    """
     path = token_path or _token_path()
+
+    if force:
+        logger.info("Forced token refresh (token expired)")
+        return _do_refresh(access_token, token_path=path)
+
     if not path.exists():
         return access_token
 

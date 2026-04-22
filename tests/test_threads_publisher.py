@@ -134,3 +134,51 @@ def test_publish_cleans_up_on_api_error(
 
     # Cleanup still called via finally block
     mock_cleanup.assert_called_once_with(uploads, publish_settings)
+
+
+@patch("auto_card_news_v2.threads.publisher.cleanup_images")
+@patch("auto_card_news_v2.threads.publisher.get_post_permalink")
+@patch("auto_card_news_v2.threads.publisher.publish_container")
+@patch("auto_card_news_v2.threads.publisher.wait_for_container")
+@patch("auto_card_news_v2.threads.publisher.create_carousel_container")
+@patch("auto_card_news_v2.threads.publisher.create_image_container")
+@patch("auto_card_news_v2.threads.publisher.upload_images")
+def test_publish_with_expired_token_refreshes(
+    mock_upload,
+    mock_create_img,
+    mock_create_carousel,
+    mock_wait,
+    mock_publish,
+    mock_permalink,
+    mock_cleanup,
+    publish_settings,
+    sample_post,
+    tmp_path,
+):
+    """When token is expired, publisher should attempt refresh instead of failing."""
+    # Create an expired token file
+    expired_at = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    expired_token_path = tmp_path / "expired_token.json"
+    expired_token_path.write_text(
+        json.dumps({"access_token": "expired_tok", "expires_in": 0, "expires_at": expired_at}),
+        encoding="utf-8",
+    )
+
+    # Mock refresh to return a new valid token
+    with patch("auto_card_news_v2.threads.publisher.refresh_if_needed", return_value="refreshed_tok"):
+        mock_upload.return_value = tuple(
+            ImageUpload(local_path=p, public_url=f"https://cdn/{p.name}", upload_id=f"id_{i}")
+            for i, p in enumerate(sample_post.image_paths)
+        )
+        mock_create_img.side_effect = ["img_c0", "img_c1", "img_c2"]
+        mock_create_carousel.return_value = "carousel_c"
+        mock_publish.return_value = "post_999"
+        mock_permalink.return_value = "https://www.threads.net/@user/post/abc"
+
+        result = publish_post(sample_post, publish_settings, token_path=expired_token_path)
+
+    assert result.threads_id == "post_999"
+    # Verify the refreshed token was used in carousel creation
+    mock_create_carousel.assert_called_once_with(
+        "user_123", ["img_c0", "img_c1", "img_c2"], "Test caption #news", "refreshed_tok"
+    )

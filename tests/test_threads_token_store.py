@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 from auto_card_news_v2.threads.token_store import (
     load_token,
+    load_token_allow_expired,
     refresh_if_needed,
     save_token,
 )
@@ -88,3 +89,47 @@ def test_refresh_if_needed_no_file(tmp_path):
     path = tmp_path / "missing.json"
     result = refresh_if_needed("my_tok", token_path=path)
     assert result == "my_tok"
+
+
+def test_load_token_allow_expired_returns_token_and_flag(tmp_path):
+    path = tmp_path / "token.json"
+    expired = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    data = {"access_token": "old_tok", "expires_in": 0, "expires_at": expired}
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    token, is_expired = load_token_allow_expired(token_path=path)
+    assert token == "old_tok"
+    assert is_expired is True
+
+
+def test_load_token_allow_expired_valid_token(tmp_path):
+    path = tmp_path / "token.json"
+    future = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+    data = {"access_token": "good_tok", "expires_in": 5_184_000, "expires_at": future}
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    token, is_expired = load_token_allow_expired(token_path=path)
+    assert token == "good_tok"
+    assert is_expired is False
+
+
+def test_load_token_allow_expired_missing_file(tmp_path):
+    path = tmp_path / "nonexistent.json"
+    token, is_expired = load_token_allow_expired(token_path=path)
+    assert token is None
+    assert is_expired is False
+
+
+def test_refresh_if_needed_force(tmp_path, monkeypatch):
+    path = tmp_path / "token.json"
+    expired = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    data = {"access_token": "expired_tok", "expires_in": 0, "expires_at": expired}
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    monkeypatch.setattr(
+        "auto_card_news_v2.threads.token_store._do_refresh",
+        lambda token, *, token_path: "refreshed_tok",
+    )
+
+    result = refresh_if_needed("expired_tok", token_path=path, force=True)
+    assert result == "refreshed_tok"
